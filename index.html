@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dziennik Elektroniczny</title>
+  <script src="https://www.gstatic.com/firebasejs/9.1.2/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.1.2/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.1.2/firebase-firestore.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; }
+    .hidden { display: none; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Dziennik Elektroniczny</h1>
+    
+    <!-- Ekran logowania -->
+    <div id="loginScreen">
+      <h2>Zaloguj się</h2>
+      <input type="email" id="email" placeholder="Email">
+      <input type="password" id="password" placeholder="Hasło">
+      <button onclick="login()">Zaloguj</button>
+      <button onclick="toggleRegister()">Zarejestruj się</button>
+    </div>
+
+    <!-- Ekran rejestracji -->
+    <div id="registerScreen" class="hidden">
+      <h2>Rejestracja</h2>
+      <input type="email" id="registerEmail" placeholder="Email">
+      <input type="password" id="registerPassword" placeholder="Hasło">
+      <button onclick="register()">Zarejestruj</button>
+      <button onclick="toggleRegister()">Anuluj</button>
+    </div>
+
+    <!-- Ekran po zalogowaniu -->
+    <div id="appScreen" class="hidden">
+      <h2>Witaj, <span id="userName"></span></h2>
+      <h3>Dodaj oceny i obecność</h3>
+      <input type="text" id="studentName" placeholder="Imię ucznia">
+      <input type="number" id="grade" placeholder="Ocena">
+      <button onclick="addGrade()">Dodaj ocenę</button>
+      <div id="gradesList"></div>
+      <button onclick="logout()">Wyloguj</button>
+    </div>
+  </div>
+
+  <script>
+    // Twój konfiguracja Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyDWeFfbCqIZrCvzP9Jb5goSEkIu7TER2VE",
+      authDomain: "dziennik-elektroniczny-ebefa.firebaseapp.com",
+      projectId: "dziennik-elektroniczny-ebefa",
+      storageBucket: "dziennik-elektroniczny-ebefa.appspot.com",
+      messagingSenderId: "584485457427",
+      appId: "1:584485457427:web:b04187cb7fc8cde0b1f9e6",
+      measurementId: "G-JE7BJ6FP0J"
+    };
+
+    // Inicjalizacja Firebase
+    const app = firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // Ekrany
+    const loginScreen = document.getElementById('loginScreen');
+    const registerScreen = document.getElementById('registerScreen');
+    const appScreen = document.getElementById('appScreen');
+
+    // Zalogowanie użytkownika
+    function login() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      auth.signInWithEmailAndPassword(email, password)
+        .then(userCredential => {
+          const user = userCredential.user;
+          document.getElementById('userName').textContent = user.email;
+          toggleScreens('appScreen');
+        })
+        .catch(error => alert(error.message));
+    }
+
+    // Rejestracja nowego użytkownika
+    function register() {
+      const email = document.getElementById('registerEmail').value;
+      const password = document.getElementById('registerPassword').value;
+      auth.createUserWithEmailAndPassword(email, password)
+        .then(userCredential => {
+          const user = userCredential.user;
+          document.getElementById('userName').textContent = user.email;
+          toggleScreens('appScreen');
+        })
+        .catch(error => alert(error.message));
+    }
+
+    // Wylogowanie użytkownika
+    function logout() {
+      auth.signOut().then(() => toggleScreens('loginScreen'));
+    }
+
+    // Zmiana ekranów
+    function toggleScreens(screenToShow) {
+      [loginScreen, registerScreen, appScreen].forEach(screen => {
+        screen.classList.add('hidden');
+      });
+      document.getElementById(screenToShow).classList.remove('hidden');
+    }
+
+    // Dodanie oceny
+    function addGrade() {
+      const studentName = document.getElementById('studentName').value;
+      const grade = document.getElementById('grade').value;
+      if (studentName && grade) {
+        db.collection('grades').add({
+          studentName: studentName,
+          grade: grade,
+          timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        })
+        .then(() => loadGrades())
+        .catch(error => alert(error.message));
+      }
+    }
+
+    // Ładowanie ocen
+    function loadGrades() {
+      db.collection('grades').get()
+        .then(querySnapshot => {
+          const gradesList = document.getElementById('gradesList');
+          gradesList.innerHTML = '';
+          querySnapshot.forEach(doc => {
+            const gradeData = doc.data();
+            gradesList.innerHTML += `<p>${gradeData.studentName}: ${gradeData.grade}</p>`;
+          });
+        });
+    }
+
+    // Zmiana na ekran rejestracji
+    function toggleRegister() {
+      registerScreen.classList.toggle('hidden');
+      loginScreen.classList.toggle('hidden');
+    }
+
+    // Nasłuchiwanie zmian logowania
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        toggleScreens('appScreen');
+      } else {
+        toggleScreens('loginScreen');
+      }
+    });
+  </script>
+</body>
+</html>
